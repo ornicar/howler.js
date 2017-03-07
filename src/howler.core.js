@@ -431,7 +431,6 @@
       self._onplay = o.onplay ? [{fn: o.onplay}] : [];
       self._onstop = o.onstop ? [{fn: o.onstop}] : [];
       self._onvolume = o.onvolume ? [{fn: o.onvolume}] : [];
-      self._onseek = o.onseek ? [{fn: o.onseek}] : [];
       self._onresume = [];
 
       // Web Audio or HTML5 Audio?
@@ -623,7 +622,7 @@
       }
 
       // Determine how long to play for and where to start playing.
-      var seek = Math.max(0, sound._seek > 0 ? sound._seek : self._sprite[sprite][0] / 1000);
+      var seek = Math.max(0, self._sprite[sprite][0] / 1000);
       var duration = Math.max(0, ((self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000) - seek);
       var timeout = duration * 1000;
 
@@ -631,7 +630,6 @@
       sound._paused = false;
       sound._ended = false;
       sound._sprite = sprite;
-      sound._seek = seek;
       sound._start = self._sprite[sprite][0] / 1000;
       sound._stop = (self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000;
 
@@ -749,9 +747,6 @@
         var sound = self._soundById(ids[i]);
 
         if (sound && !sound._paused) {
-          // Reset the seek position.
-          sound._seek = self.seek(ids[i]);
-          sound._rateSeek = 0;
           sound._paused = true;
 
           if (sound._node) {
@@ -816,9 +811,6 @@
         var sound = self._soundById(ids[i]);
 
         if (sound) {
-          // Reset the seek position.
-          sound._seek = sound._start || 0;
-          sound._rateSeek = 0;
           sound._paused = true;
           sound._ended = true;
 
@@ -928,96 +920,6 @@
       } else {
         sound = id ? self._soundById(id) : self._sounds[0];
         return sound ? sound._volume : 0;
-      }
-
-      return self;
-    },
-
-    /**
-     * Get/set the seek position of a sound. This method can optionally take 0, 1 or 2 arguments.
-     *   seek() -> Returns the first sound node's current seek position.
-     *   seek(id) -> Returns the sound id's current seek position.
-     *   seek(seek) -> Sets the seek position of the first sound node.
-     *   seek(seek, id) -> Sets the seek position of passed sound id.
-     * @return {Howl/Number} Returns self or the current seek position.
-     */
-    seek: function() {
-      var self = this;
-      var args = arguments;
-      var seek, id;
-
-      // Determine the values based on arguments.
-      if (args.length === 0) {
-        // We will simply return the current position of the first node.
-        id = self._sounds[0]._id;
-      } else if (args.length === 1) {
-        // First check if this is an ID, and if not, assume it is a new seek position.
-        var ids = self._getSoundIds();
-        var index = ids.indexOf(args[0]);
-        if (index >= 0) {
-          id = parseInt(args[0], 10);
-        } else {
-          id = self._sounds[0]._id;
-          seek = parseFloat(args[0]);
-        }
-      } else if (args.length === 2) {
-        seek = parseFloat(args[0]);
-        id = parseInt(args[1], 10);
-      }
-
-      // If there is no ID, bail out.
-      if (typeof id === 'undefined') {
-        return self;
-      }
-
-      // If the sound hasn't loaded, add it to the load queue to seek when capable.
-      if (self._state !== 'loaded') {
-        self._queue.push({
-          event: 'seek',
-          action: function() {
-            self.seek.apply(self, args);
-          }
-        });
-
-        return self;
-      }
-
-      // Get the sound.
-      var sound = self._soundById(id);
-
-      if (sound) {
-        if (typeof seek === 'number' && seek >= 0) {
-          // Pause the sound and update position for restarting playback.
-          var playing = self.playing(id);
-          if (playing) {
-            self.pause(id, true);
-          }
-
-          // Move the position of the track and cancel timer.
-          sound._seek = seek;
-          sound._ended = false;
-          self._clearTimer(id);
-
-          // Restart the playback if the sound was playing.
-          if (playing) {
-            self.play(id, true);
-          }
-
-          // Update the seek position for HTML5 Audio.
-          if (!self._webAudio && sound._node) {
-            sound._node.currentTime = seek;
-          }
-
-          self._emit('seek', id);
-        } else {
-          if (self._webAudio) {
-            var realTime = self.playing(id) ? Howler.ctx.currentTime - sound._playStart : 0;
-            var rateSeek = sound._rateSeek ? sound._rateSeek - sound._seek : 0;
-            return sound._seek + (rateSeek + realTime);
-          } else {
-            return sound._node.currentTime;
-          }
-        }
       }
 
       return self;
@@ -1274,8 +1176,6 @@
       if (self._webAudio) {
         sound._paused = true;
         sound._ended = true;
-        sound._seek = sound._start || 0;
-        sound._rateSeek = 0;
         self._clearTimer(sound._id);
 
         // Clean up the buffer source.
@@ -1470,7 +1370,6 @@
 
       // Setup the default parameters.
       self._volume = parent._volume;
-      self._seek = 0;
       self._paused = true;
       self._ended = true;
       self._sprite = '__default';
@@ -1535,8 +1434,6 @@
 
       // Reset all of the parameters of this sound.
       self._volume = parent._volume;
-      self._seek = 0;
-      self._rateSeek = 0;
       self._paused = true;
       self._ended = true;
       self._sprite = '__default';
