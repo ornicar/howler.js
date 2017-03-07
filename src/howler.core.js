@@ -406,6 +406,9 @@
       self._endTimers = {};
       self._queue = [];
 
+      // Setup event listeners.
+      self._onend, self._onload, self._onloaderror, self._onpause, self._onplay, self._onstop, self._onvolume, self._onresume = [];
+
       // Web Audio or HTML5 Audio?
       self._webAudio = Howler.usingWebAudio && !self._html5;
 
