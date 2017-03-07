@@ -391,7 +391,6 @@
       }
 
       // Setup user-defined default properties.
-      self._autoplay = o.autoplay || false;
       self._format = (typeof o.format !== 'string') ? o.format : [o.format];
       self._html5 = o.html5 || false;
       self._pool = o.pool || 5;
@@ -419,16 +418,6 @@
 
       // Keep track of this Howl group in the global controller.
       Howler._howls.push(self);
-
-      // If they selected autoplay, add a play event to the load queue.
-      if (self._autoplay) {
-        self._queue.push({
-          event: 'play',
-          action: function() {
-            self.play();
-          }
-        });
-      }
 
       // Load the source file unless otherwise specified.
       if (self._preload) {
