@@ -33,7 +33,6 @@
       // Internal properties.
       self._codecs = {};
       self._howls = [];
-      self._muted = false;
       self._volume = 1;
       self._canPlayEvent = 'canplaythrough';
       self._navigator = (typeof window !== 'undefined' && window.navigator) ? window.navigator : null;
@@ -71,11 +70,6 @@
       if (typeof vol !== 'undefined' && vol >= 0 && vol <= 1) {
         self._volume = vol;
 
-        // Don't update any of the nodes if we are muted.
-        if (self._muted) {
-          return self;
-        }
-
         // When using Web Audio, we just need to adjust the master gain.
         if (self.usingWebAudio) {
           self.masterGain.gain.value = vol;
@@ -102,45 +96,6 @@
       }
 
       return self._volume;
-    },
-
-    /**
-     * Handle muting and unmuting globally.
-     * @param  {Boolean} muted Is muted or not.
-     */
-    mute: function(muted) {
-      var self = this || Howler;
-
-      // If we don't have an AudioContext created yet, run the setup.
-      if (!self.ctx) {
-        setupAudioContext();
-      }
-
-      self._muted = muted;
-
-      // With Web Audio, we just need to mute the master gain.
-      if (self.usingWebAudio) {
-        self.masterGain.gain.value = muted ? 0 : self._volume;
-      }
-
-      // Loop through and mute all HTML5 Audio nodes.
-      for (var i=0; i<self._howls.length; i++) {
-        if (!self._howls[i]._webAudio) {
-          // Get all of the sounds in this Howl group.
-          var ids = self._howls[i]._getSoundIds();
-
-          // Loop through all sounds and mark the audio node as muted.
-          for (var j=0; j<ids.length; j++) {
-            var sound = self._howls[i]._soundById(ids[j]);
-
-            if (sound && sound._node) {
-              sound._node.muted = (muted) ? true : sound._muted;
-            }
-          }
-        }
-      }
-
-      return self;
     },
 
     /**
@@ -455,7 +410,6 @@
       self._autoplay = o.autoplay || false;
       self._format = (typeof o.format !== 'string') ? o.format : [o.format];
       self._html5 = o.html5 || false;
-      self._muted = o.mute || false;
       self._loop = o.loop || false;
       self._pool = o.pool || 5;
       self._preload = (typeof o.preload === 'boolean') ? o.preload : true;
@@ -479,7 +433,6 @@
       self._onpause = o.onpause ? [{fn: o.onpause}] : [];
       self._onplay = o.onplay ? [{fn: o.onplay}] : [];
       self._onstop = o.onstop ? [{fn: o.onstop}] : [];
-      self._onmute = o.onmute ? [{fn: o.onmute}] : [];
       self._onvolume = o.onvolume ? [{fn: o.onvolume}] : [];
       self._onrate = o.onrate ? [{fn: o.onrate}] : [];
       self._onseek = o.onseek ? [{fn: o.onseek}] : [];
@@ -695,7 +648,7 @@
           self._refreshBuffer(sound);
 
           // Setup the playback params.
-          var vol = (sound._muted || self._muted) ? 0 : sound._volume;
+          var vol = sound._volume;
           node.gain.setValueAtTime(vol, Howler.ctx.currentTime);
           sound._playStart = Howler.ctx.currentTime;
 
@@ -732,7 +685,6 @@
         // Fire this when the sound is ready to play to begin HTML5 Audio playback.
         var playHtml5 = function() {
           node.currentTime = seek;
-          node.muted = sound._muted || self._muted || Howler._muted || node.muted;
           node.volume = sound._volume * Howler.volume();
           node.playbackRate = sound._rate;
 
@@ -917,59 +869,6 @@
     },
 
     /**
-     * Mute/unmute a single sound or all sounds in this Howl group.
-     * @param  {Boolean} muted Set to true to mute and false to unmute.
-     * @param  {Number} id    The sound ID to update (omit to mute/unmute all).
-     * @return {Howl}
-     */
-    mute: function(muted, id) {
-      var self = this;
-
-      // If the sound hasn't loaded, add it to the load queue to mute when capable.
-      if (self._state !== 'loaded') {
-        self._queue.push({
-          event: 'mute',
-          action: function() {
-            self.mute(muted, id);
-          }
-        });
-
-        return self;
-      }
-
-      // If applying mute/unmute to all sounds, update the group's value.
-      if (typeof id === 'undefined') {
-        if (typeof muted === 'boolean') {
-          self._muted = muted;
-        } else {
-          return self._muted;
-        }
-      }
-
-      // If no id is passed, get all ID's to be muted.
-      var ids = self._getSoundIds(id);
-
-      for (var i=0; i<ids.length; i++) {
-        // Get the sound.
-        var sound = self._soundById(ids[i]);
-
-        if (sound) {
-          sound._muted = muted;
-
-          if (self._webAudio && sound._node) {
-            sound._node.gain.setValueAtTime(muted ? 0 : sound._volume, Howler.ctx.currentTime);
-          } else if (sound._node) {
-            sound._node.muted = Howler._muted ? true : muted;
-          }
-
-          self._emit('mute', sound._id);
-        }
-      }
-
-      return self;
-    },
-
-    /**
      * Get/set the volume of this sound or of the Howl group. This method can optionally take 0, 1 or 2 arguments.
      *   volume() -> Returns the group's volume value.
      *   volume(id) -> Returns the sound id's current volume.
@@ -1034,9 +933,9 @@
               self._stopFade(id[i]);
             }
 
-            if (self._webAudio && sound._node && !sound._muted) {
+            if (self._webAudio && sound._node) {
               sound._node.gain.setValueAtTime(vol, Howler.ctx.currentTime);
-            } else if (sound._node && !sound._muted) {
+            } else if (sound._node) {
               sound._node.volume = vol * Howler.volume();
             }
 
@@ -1101,7 +1000,7 @@
           }
 
           // If we are using Web Audio, let the native methods do the actual fade.
-          if (self._webAudio && !sound._muted) {
+          if (self._webAudio) {
             var currentTime = Howler.ctx.currentTime;
             var end = currentTime + (len / 1000);
             sound._volume = from;
@@ -1878,10 +1777,8 @@
       var parent = self._parent;
 
       // Setup the default parameters.
-      self._muted = parent._muted;
       self._loop = parent._loop;
       self._volume = parent._volume;
-      self._muted = parent._muted;
       self._rate = parent._rate;
       self._seek = 0;
       self._paused = true;
@@ -1907,7 +1804,7 @@
     create: function() {
       var self = this;
       var parent = self._parent;
-      var volume = (Howler._muted || self._muted || self._parent._muted) ? 0 : self._volume;
+      var volume = self._volume;
 
       if (parent._webAudio) {
         // Create the gain node for controlling volume (the source will connect to this).
@@ -1947,10 +1844,8 @@
       var parent = self._parent;
 
       // Reset all of the parameters of this sound.
-      self._muted = parent._muted;
       self._loop = parent._loop;
       self._volume = parent._volume;
-      self._muted = parent._muted;
       self._rate = parent._rate;
       self._seek = 0;
       self._rateSeek = 0;
