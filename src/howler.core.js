@@ -410,7 +410,6 @@
       self._autoplay = o.autoplay || false;
       self._format = (typeof o.format !== 'string') ? o.format : [o.format];
       self._html5 = o.html5 || false;
-      self._loop = o.loop || false;
       self._pool = o.pool || 5;
       self._preload = (typeof o.preload === 'boolean') ? o.preload : true;
       self._rate = o.rate || 1;
@@ -637,7 +636,6 @@
       sound._seek = seek;
       sound._start = self._sprite[sprite][0] / 1000;
       sound._stop = (self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000;
-      sound._loop = !!(sound._loop || self._sprite[sprite][2]);
 
       // Begin the actual playback.
       var node = sound._node;
@@ -653,9 +651,9 @@
 
           // Play the sound using the supported method.
           if (typeof node.bufferSource.start === 'undefined') {
-            sound._loop ? node.bufferSource.noteGrainOn(0, seek, 86400) : node.bufferSource.noteGrainOn(0, seek, duration);
+            node.bufferSource.noteGrainOn(0, seek, duration);
           } else {
-            sound._loop ? node.bufferSource.start(0, seek, 86400) : node.bufferSource.start(0, seek, duration);
+            node.bufferSource.start(0, seek, duration);
           }
 
           // Start a new timer if none is present.
@@ -933,57 +931,6 @@
       } else {
         sound = id ? self._soundById(id) : self._sounds[0];
         return sound ? sound._volume : 0;
-      }
-
-      return self;
-    },
-
-    /**
-     * Get/set the loop parameter on a sound. This method can optionally take 0, 1 or 2 arguments.
-     *   loop() -> Returns the group's loop value.
-     *   loop(id) -> Returns the sound id's loop value.
-     *   loop(loop) -> Sets the loop value for all sounds in this Howl group.
-     *   loop(loop, id) -> Sets the loop value of passed sound id.
-     * @return {Howl/Boolean} Returns self or current loop value.
-     */
-    loop: function() {
-      var self = this;
-      var args = arguments;
-      var loop, id, sound;
-
-      // Determine the values for loop and id.
-      if (args.length === 0) {
-        // Return the grou's loop value.
-        return self._loop;
-      } else if (args.length === 1) {
-        if (typeof args[0] === 'boolean') {
-          loop = args[0];
-          self._loop = loop;
-        } else {
-          // Return this sound's loop value.
-          sound = self._soundById(parseInt(args[0], 10));
-          return sound ? sound._loop : false;
-        }
-      } else if (args.length === 2) {
-        loop = args[0];
-        id = parseInt(args[1], 10);
-      }
-
-      // If no id is passed, get all ID's to be looped.
-      var ids = self._getSoundIds(id);
-      for (var i=0; i<ids.length; i++) {
-        sound = self._soundById(ids[i]);
-
-        if (sound) {
-          sound._loop = loop;
-          if (self._webAudio && sound._node && sound._node.bufferSource) {
-            sound._node.bufferSource.loop = loop;
-            if (loop) {
-              sound._node.bufferSource.loopStart = sound._start || 0;
-              sound._node.bufferSource.loopEnd = sound._stop;
-            }
-          }
-        }
       }
 
       return self;
@@ -1416,30 +1363,11 @@
       var self = this;
       var sprite = sound._sprite;
 
-      // Should this sound loop?
-      var loop = !!(sound._loop || self._sprite[sprite][2]);
-
       // Fire the ended event.
       self._emit('end', sound._id);
 
-      // Restart the playback for HTML5 Audio loop.
-      if (!self._webAudio && loop) {
-        self.stop(sound._id, true).play(sound._id);
-      }
-
-      // Restart this timer if on a Web Audio loop.
-      if (self._webAudio && loop) {
-        self._emit('play', sound._id);
-        sound._seek = sound._start || 0;
-        sound._rateSeek = 0;
-        sound._playStart = Howler.ctx.currentTime;
-
-        var timeout = ((sound._stop - sound._start) * 1000) / Math.abs(sound._rate);
-        self._endTimers[sound._id] = setTimeout(self._ended.bind(self, sound), timeout);
-      }
-
       // Mark the node as paused.
-      if (self._webAudio && !loop) {
+      if (self._webAudio) {
         sound._paused = true;
         sound._ended = true;
         sound._seek = sound._start || 0;
@@ -1454,7 +1382,7 @@
       }
 
       // When using a sprite, end the track.
-      if (!self._webAudio && !loop) {
+      if (!self._webAudio) {
         self.stop(sound._id);
       }
 
@@ -1595,11 +1523,7 @@
       }
 
       // Setup looping and playback rate.
-      sound._node.bufferSource.loop = sound._loop;
-      if (sound._loop) {
-        sound._node.bufferSource.loopStart = sound._start || 0;
-        sound._node.bufferSource.loopEnd = sound._stop;
-      }
+      sound._node.bufferSource.loop = false;
       sound._node.bufferSource.playbackRate.value = sound._rate;
 
       return self;
@@ -1645,7 +1569,6 @@
       var parent = self._parent;
 
       // Setup the default parameters.
-      self._loop = parent._loop;
       self._volume = parent._volume;
       self._rate = parent._rate;
       self._seek = 0;
@@ -1712,7 +1635,6 @@
       var parent = self._parent;
 
       // Reset all of the parameters of this sound.
-      self._loop = parent._loop;
       self._volume = parent._volume;
       self._rate = parent._rate;
       self._seek = 0;
