@@ -396,7 +396,6 @@
       self._html5 = o.html5 || false;
       self._pool = o.pool || 5;
       self._preload = (typeof o.preload === 'boolean') ? o.preload : true;
-      self._sprite = o.sprite || {};
       self._src = (typeof o.src !== 'string') ? o.src : [o.src];
       self._volume = o.volume !== undefined ? o.volume : 1;
 
@@ -516,42 +515,19 @@
 
     /**
      * Play a sound or resume previous playback.
-     * @param  {String/Number} sprite   Sprite name for sprite playback or sound id to continue previous.
+     * @param  {String/Number} sprite   **REMOVED** Sprite name for sprite playback or sound id to continue previous.
      * @param  {Boolean} internal Internal Use: true prevents event firing.
      * @return {Number}          Sound ID.
      */
-    play: function(sprite, internal) {
+    play: function(_, internal) {
       var self = this;
-      var id = null;
-
-      // Determine if a sprite, sound id or nothing was passed
-      if (typeof sprite === 'number') {
-        id = sprite;
-        sprite = null;
-      } else if (typeof sprite === 'string' && self._state === 'loaded' && !self._sprite[sprite]) {
-        // If the passed sprite doesn't exist, do nothing.
-        return null;
-      } else if (typeof sprite === 'undefined') {
-        // Use the default sound sprite (plays the full audio length).
-        sprite = '__default';
-      }
 
       // Get the selected node, or get one from the pool.
-      var sound = id ? self._soundById(id) : self._inactiveSound();
-
-      // If the sound doesn't exist, do nothing.
-      if (!sound) {
-        return null;
-      }
-
-      // Select the sprite definition.
-      if (id && !sprite) {
-        sprite = sound._sprite || '__default';
-      }
+      var sound = self._inactiveSound();
 
       // If we have no sprite and the sound hasn't loaded, we must wait
       // for the sound to load to get our audio's duration.
-      if (self._state !== 'loaded' && !self._sprite[sprite]) {
+      if (self._state !== 'loaded' && !self._sprite) {
         self._queue.push({
           event: 'play',
           action: function() {
@@ -562,33 +538,20 @@
         return sound._id;
       }
 
-      // Don't play the sound if an id was passed and it is already playing.
-      if (id) {
-        // Trigger the play event, in order to keep iterating through queue.
-        if (!internal) {
-          setTimeout(function() {
-            self._emit('play', sound._id);
-          }, 0);
-        }
-
-        return sound._id;
-      }
-
       // Make sure the AudioContext isn't suspended, and resume it if it is.
       if (self._webAudio) {
         Howler._autoResume();
       }
 
       // Determine how long to play for and where to start playing.
-      var seek = Math.max(0, self._sprite[sprite][0] / 1000);
-      var duration = Math.max(0, ((self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000) - seek);
+      var seek = Math.max(0, self._sprite[0] / 1000);
+      var duration = Math.max(0, ((self._sprite[0] + self._sprite[1]) / 1000) - seek);
       var timeout = duration * 1000;
 
       // Update the parameters of the sound
       sound._ended = false;
-      sound._sprite = sprite;
-      sound._start = self._sprite[sprite][0] / 1000;
-      sound._stop = (self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000;
+      sound._start = self._sprite[0] / 1000;
+      sound._stop = (self._sprite[0] + self._sprite[1]) / 1000;
 
       // Begin the actual playback.
       var node = sound._node;
@@ -847,7 +810,7 @@
       // If we pass an ID, get the sound and return the sprite length.
       var sound = self._soundById(id);
       if (sound) {
-        duration = self._sprite[sound._sprite][1] / 1000;
+        duration = self._sprite[1] / 1000;
       }
 
       return duration;
@@ -1051,7 +1014,6 @@
      */
     _ended: function(sound) {
       var self = this;
-      var sprite = sound._sprite;
 
       // Fire the ended event.
       self._emit('end', sound._id);
@@ -1254,7 +1216,6 @@
       // Setup the default parameters.
       self._volume = parent._volume;
       self._ended = true;
-      self._sprite = '__default';
 
       // Generate a unique ID for this sound.
       self._id = Math.round(Date.now() * Math.random());
@@ -1316,7 +1277,6 @@
       // Reset all of the parameters of this sound.
       self._volume = parent._volume;
       self._ended = true;
-      self._sprite = '__default';
 
       // Generate a new ID so that it isn't confused with the previous sound.
       self._id = Math.round(Date.now() * Math.random());
@@ -1348,8 +1308,8 @@
       parent._duration = Math.ceil(self._node.duration * 10) / 10;
 
       // Setup a sprite if none is defined.
-      if (Object.keys(parent._sprite).length === 0) {
-        parent._sprite = {__default: [0, parent._duration * 1000]};
+      if (!parent._sprite) {
+        parent._sprite = [0, parent._duration * 1000];
       }
 
       if (parent._state !== 'loaded') {
@@ -1465,8 +1425,8 @@
     }
 
     // Setup a sprite if none is defined.
-    if (Object.keys(self._sprite).length === 0) {
-      self._sprite = {__default: [0, self._duration * 1000]};
+    if (!self._sprite) {
+      self._sprite = [0, self._duration * 1000];
     }
 
     // Fire the loaded event.
