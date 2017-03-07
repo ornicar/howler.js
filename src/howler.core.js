@@ -412,7 +412,6 @@
       self._html5 = o.html5 || false;
       self._pool = o.pool || 5;
       self._preload = (typeof o.preload === 'boolean') ? o.preload : true;
-      self._rate = o.rate || 1;
       self._sprite = o.sprite || {};
       self._src = (typeof o.src !== 'string') ? o.src : [o.src];
       self._volume = o.volume !== undefined ? o.volume : 1;
@@ -432,7 +431,6 @@
       self._onplay = o.onplay ? [{fn: o.onplay}] : [];
       self._onstop = o.onstop ? [{fn: o.onstop}] : [];
       self._onvolume = o.onvolume ? [{fn: o.onvolume}] : [];
-      self._onrate = o.onrate ? [{fn: o.onrate}] : [];
       self._onseek = o.onseek ? [{fn: o.onseek}] : [];
       self._onresume = [];
 
@@ -627,7 +625,7 @@
       // Determine how long to play for and where to start playing.
       var seek = Math.max(0, sound._seek > 0 ? sound._seek : self._sprite[sprite][0] / 1000);
       var duration = Math.max(0, ((self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000) - seek);
-      var timeout = (duration * 1000) / Math.abs(sound._rate);
+      var timeout = duration * 1000;
 
       // Update the parameters of the sound
       sound._paused = false;
@@ -683,7 +681,6 @@
         var playHtml5 = function() {
           node.currentTime = seek;
           node.volume = sound._volume * Howler.volume();
-          node.playbackRate = sound._rate;
 
           setTimeout(function() {
             node.play();
@@ -937,99 +934,6 @@
     },
 
     /**
-     * Get/set the playback rate of a sound. This method can optionally take 0, 1 or 2 arguments.
-     *   rate() -> Returns the first sound node's current playback rate.
-     *   rate(id) -> Returns the sound id's current playback rate.
-     *   rate(rate) -> Sets the playback rate of all sounds in this Howl group.
-     *   rate(rate, id) -> Sets the playback rate of passed sound id.
-     * @return {Howl/Number} Returns self or the current playback rate.
-     */
-    rate: function() {
-      var self = this;
-      var args = arguments;
-      var rate, id;
-
-      // Determine the values based on arguments.
-      if (args.length === 0) {
-        // We will simply return the current rate of the first node.
-        id = self._sounds[0]._id;
-      } else if (args.length === 1) {
-        // First check if this is an ID, and if not, assume it is a new rate value.
-        var ids = self._getSoundIds();
-        var index = ids.indexOf(args[0]);
-        if (index >= 0) {
-          id = parseInt(args[0], 10);
-        } else {
-          rate = parseFloat(args[0]);
-        }
-      } else if (args.length === 2) {
-        rate = parseFloat(args[0]);
-        id = parseInt(args[1], 10);
-      }
-
-      // Update the playback rate or return the current value.
-      var sound;
-      if (typeof rate === 'number') {
-        // If the sound hasn't loaded, add it to the load queue to change playback rate when capable.
-        if (self._state !== 'loaded') {
-          self._queue.push({
-            event: 'rate',
-            action: function() {
-              self.rate.apply(self, args);
-            }
-          });
-
-          return self;
-        }
-
-        // Set the group rate.
-        if (typeof id === 'undefined') {
-          self._rate = rate;
-        }
-
-        // Update one or all volumes.
-        id = self._getSoundIds(id);
-        for (var i=0; i<id.length; i++) {
-          // Get the sound.
-          sound = self._soundById(id[i]);
-
-          if (sound) {
-            // Keep track of our position when the rate changed and update the playback
-            // start position so we can properly adjust the seek position for time elapsed.
-            sound._rateSeek = self.seek(id[i]);
-            sound._playStart = self._webAudio ? Howler.ctx.currentTime : sound._playStart;
-            sound._rate = rate;
-
-            // Change the playback rate.
-            if (self._webAudio && sound._node && sound._node.bufferSource) {
-              sound._node.bufferSource.playbackRate.value = rate;
-            } else if (sound._node) {
-              sound._node.playbackRate = rate;
-            }
-
-            // Reset the timers.
-            var seek = self.seek(id[i]);
-            var duration = ((self._sprite[sound._sprite][0] + self._sprite[sound._sprite][1]) / 1000) - seek;
-            var timeout = (duration * 1000) / Math.abs(sound._rate);
-
-            // Start a new end timer if sound is already playing.
-            if (self._endTimers[id[i]] || !sound._paused) {
-              self._clearTimer(id[i]);
-              self._endTimers[id[i]] = setTimeout(self._ended.bind(self, sound), timeout);
-            }
-
-            self._emit('rate', sound._id);
-          }
-        }
-      } else {
-        sound = self._soundById(id);
-        return sound ? sound._rate : self._rate;
-      }
-
-      return self;
-    },
-
-    /**
      * Get/set the seek position of a sound. This method can optionally take 0, 1 or 2 arguments.
      *   seek() -> Returns the first sound node's current seek position.
      *   seek(id) -> Returns the sound id's current seek position.
@@ -1109,7 +1013,7 @@
           if (self._webAudio) {
             var realTime = self.playing(id) ? Howler.ctx.currentTime - sound._playStart : 0;
             var rateSeek = sound._rateSeek ? sound._rateSeek - sound._seek : 0;
-            return sound._seek + (rateSeek + realTime * Math.abs(sound._rate));
+            return sound._seek + (rateSeek + realTime);
           } else {
             return sound._node.currentTime;
           }
@@ -1522,10 +1426,6 @@
         sound._node.bufferSource.connect(sound._node);
       }
 
-      // Setup looping and playback rate.
-      sound._node.bufferSource.loop = false;
-      sound._node.bufferSource.playbackRate.value = sound._rate;
-
       return self;
     },
 
@@ -1570,7 +1470,6 @@
 
       // Setup the default parameters.
       self._volume = parent._volume;
-      self._rate = parent._rate;
       self._seek = 0;
       self._paused = true;
       self._ended = true;
@@ -1636,7 +1535,6 @@
 
       // Reset all of the parameters of this sound.
       self._volume = parent._volume;
-      self._rate = parent._rate;
       self._seek = 0;
       self._rateSeek = 0;
       self._paused = true;
