@@ -275,7 +275,7 @@
     },
 
     /**
-     * Automatically suspend the Web Audio AudioContext after no sound has played for 30 seconds.
+     * Automatically suspend the Web Audio AudioContext after no sound has played for 90 seconds.
      * This saves processing/energy and fixes various browser-specific bugs with audio getting stuck.
      * @return {Howler}
      */
@@ -297,7 +297,7 @@
         clearTimeout(self._suspendTimer);
       }
 
-      // If no sound has played after 30 seconds, suspend the context.
+      // If no sound has played after 90 seconds, suspend the context.
       self._suspendTimer = setTimeout(function() {
         if (!self.autoSuspend) {
           return;
@@ -313,7 +313,7 @@
             self._autoResume();
           }
         });
-      }, 30000);
+      }, 90000);
 
       return self;
     },
