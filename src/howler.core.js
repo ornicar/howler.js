@@ -506,11 +506,9 @@
           // Start a new timer if none is present.
           self._endTimers[sound._id] = setTimeout(self._ended.bind(self, sound), self._duration * 1000);
 
-          if (!internal) {
-            setTimeout(function() {
-              self._emit('play', sound._id);
-            }, 0);
-          }
+          setTimeout(function() {
+            self._emit('play', sound._id);
+          }, 0);
         };
 
         var isRunning = (Howler.state === 'running');
