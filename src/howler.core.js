@@ -33,7 +33,6 @@
       // Internal properties.
       self._codecs = {};
       self._howls = [];
-      self._volume = 1;
       self._canPlayEvent = 'canplaythrough';
 
       // Public properties.
@@ -50,51 +49,6 @@
       self._setup();
 
       return self;
-    },
-
-    /**
-     * Get/set the global volume for all sounds.
-     * @param  {Float} vol Volume from 0.0 to 1.0.
-     * @return {Howler/Float}     Returns self or current volume.
-     */
-    volume: function(vol) {
-      var self = this || Howler;
-      vol = parseFloat(vol);
-
-      // If we don't have an AudioContext created yet, run the setup.
-      if (!self.ctx) {
-        setupAudioContext();
-      }
-
-      if (typeof vol !== 'undefined' && vol >= 0 && vol <= 1) {
-        self._volume = vol;
-
-        // When using Web Audio, we just need to adjust the master gain.
-        if (self.usingWebAudio) {
-          self.masterGain.gain.value = vol;
-        }
-
-        // Loop through and change volume for all HTML5 audio nodes.
-        for (var i = 0; i < self._howls.length; i++) {
-          if (!self._howls[i]._webAudio) {
-            // Get all of the sounds in this Howl group.
-            var ids = self._howls[i]._getSoundIds();
-
-            // Loop through all sounds and change the volumes.
-            for (var j = 0; j < ids.length; j++) {
-              var sound = self._howls[i]._soundById(ids[j]);
-
-              if (sound && sound._node) {
-                sound._node.volume = sound._volume * vol;
-              }
-            }
-          }
-        }
-
-        return self;
-      }
-
-      return self._volume;
     },
 
     /**
@@ -525,7 +479,7 @@
         // Fire this when the sound is ready to play to begin HTML5 Audio playback.
         var playHtml5 = function() {
           node.currentTime = 0;
-          node.volume = sound._volume * Howler.volume();
+          node.volume = sound._volume;
 
           setTimeout(function() {
             node.play();
@@ -692,7 +646,7 @@
             if (self._webAudio && sound._node) {
               sound._node.gain.setValueAtTime(vol, Howler.ctx.currentTime);
             } else if (sound._node) {
-              sound._node.volume = vol * Howler.volume();
+              sound._node.volume = vol;
             }
 
             self._emit('volume', sound._id);
@@ -1173,7 +1127,7 @@
         // Setup the new audio node.
         self._node.src = parent._src;
         self._node.preload = 'auto';
-        self._node.volume = volume * Howler.volume();
+        self._node.volume = volume;
 
         // Begin loading the source.
         self._node.load();
