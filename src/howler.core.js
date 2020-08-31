@@ -591,71 +591,32 @@
      *   volume(vol, id) -> Sets the volume of passed sound id.
      * @return {Howl/Number} Returns self or current volume.
      */
-    volume: function() {
+    volume: function(vol) {
       var self = this;
-      var args = arguments;
-      var vol, id;
-
-      // Determine the values based on arguments.
-      if (args.length === 0) {
-        // Return the value of the groups' volume.
-        return self._volume;
-      } else if (args.length === 1 || args.length === 2 && typeof args[1] === 'undefined') {
-        // First check if this is an ID, and if not, assume it is a new volume.
-        var ids = self._getSoundIds();
-        var index = ids.indexOf(args[0]);
-        if (index >= 0) {
-          id = parseInt(args[0], 10);
-        } else {
-          vol = parseFloat(args[0]);
-        }
-      } else if (args.length >= 2) {
-        vol = parseFloat(args[0]);
-        id = parseInt(args[1], 10);
-      }
-
-      // Update the volume or return the current volume.
-      var sound;
-      if (typeof vol !== 'undefined' && vol >= 0 && vol <= 1) {
-        // If the sound hasn't loaded, add it to the load queue to change volume when capable.
-        if (self._state !== 'loaded') {
-          self._queue.push({
-            event: 'volume',
-            action: function() {
-              self.volume.apply(self, args);
-            }
-          });
-
-          return self;
-        }
-
-        // Set the group volume.
-        if (typeof id === 'undefined') {
-          self._volume = vol;
-        }
-
-        // Update one or all volumes.
-        id = self._getSoundIds(id);
-        for (var i = 0; i < id.length; i++) {
-          // Get the sound.
-          sound = self._soundById(id[i]);
-
-          if (sound) {
-            sound._volume = vol;
-
-            if (self._webAudio && sound._node) {
-              sound._node.gain.setValueAtTime(vol, Howler.ctx.currentTime);
-            } else if (sound._node) {
-              sound._node.volume = vol;
-            }
-
-            self._emit('volume', sound._id);
+      if (self._state !== 'loaded') {
+        self._queue.push({
+          event: 'volume',
+          action: function() {
+            self.volume.apply(self, [vol]);
           }
-        }
-      } else {
-        sound = id ? self._soundById(id) : self._sounds[0];
-        return sound ? sound._volume : 0;
+        });
+
+        return self;
       }
+      self._volume = vol;
+
+      // Update one or all volumes.
+      self._sounds.forEach(function(sound) {
+        sound._volume = vol;
+
+        if (self._webAudio && sound._node) {
+          sound._node.gain.setValueAtTime(vol, Howler.ctx.currentTime);
+        } else if (sound._node) {
+          sound._node.volume = vol;
+        }
+
+        self._emit('volume', sound._id);
+      });
 
       return self;
     },
