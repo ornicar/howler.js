@@ -321,7 +321,7 @@
       self._queue = [];
 
       // Setup event listeners.
-      self._onload = self._onloaderror = self._onpause = self._onplay = self._onstop = self._onvolume = self._onresume = self._onend = [];
+      self._onload = self._onpause = self._onplay = self._onstop = self._onvolume = self._onresume = self._onend = [];
 
       // Web Audio or HTML5 Audio?
       self._webAudio = Howler.usingWebAudio && !self._html5;
@@ -351,10 +351,7 @@
       var url = null;
 
       // If no audio is available, quit immediately.
-      if (Howler.noAudio) {
-        self._emit('loaderror', null, 'No audio support.');
-        return;
-      }
+      if (Howler.noAudio) return;
 
       // Make sure our source is in an array.
       if (typeof self._src === 'string') {
@@ -385,10 +382,7 @@
         }
       }
 
-      if (!url) {
-        self._emit('loaderror', null, 'No codec support for selected audio sources.');
-        return;
-      }
+      if (!url) return; 
 
       self._src = url;
       self._state = 'loading';
@@ -1076,10 +1070,6 @@
       } else {
         self._node = new Audio();
 
-        // Listen for errors (http://dev.w3.org/html5/spec-author-view/spec.html#mediaerror).
-        self._errorFn = self._errorListener.bind(self);
-        self._node.addEventListener('error', self._errorFn, false);
-
         // Listen for 'canplaythrough' event to let us know the sound is ready.
         self._loadFn = self._loadListener.bind(self);
         self._node.addEventListener(Howler._canPlayEvent, self._loadFn, false);
@@ -1112,19 +1102,6 @@
       self._id = Math.round(Date.now() * Math.random());
 
       return self;
-    },
-
-    /**
-     * HTML5 Audio error listener callback.
-     */
-    _errorListener: function() {
-      var self = this;
-
-      // Fire an error event and pass back the code.
-      self._parent._emit('loaderror', self._id, self._node.error ? self._node.error.code : 0);
-
-      // Clear the event listener.
-      self._node.removeEventListener('error', self._errorListener, false);
     },
 
     /**
@@ -1188,10 +1165,7 @@
       xhr.onload = function() {
         // Make sure we get a successful response back.
         var code = (xhr.status + '')[0];
-        if (code !== '0' && code !== '2' && code !== '3') {
-          self._emit('loaderror', null, 'Failed loading audio file with status: ' + xhr.status + '.');
-          return;
-        }
+        if (code !== '0' && code !== '2' && code !== '3') return;
 
         decodeAudioData(xhr.response, self);
       };
@@ -1225,8 +1199,6 @@
         cache[self._src] = buffer;
         loadSound(self, buffer);
       }
-    }, function() {
-      self._emit('loaderror', null, 'Decoding audio data failed.');
     });
   };
 
