@@ -391,9 +391,7 @@
       new Sound(self);
 
       // Load and decode the audio data for playback.
-      if (self._webAudio) {
-        loadBuffer(self);
-      }
+      if (self._webAudio) loadBuffer(self);
 
       return self;
     },
@@ -793,7 +791,6 @@
     _drain: function() {
       var self = this;
       var limit = self._pool;
-      var cnt = 0;
       var i = 0;
 
       // If there are less sounds than the max pool size, we are done.
@@ -802,11 +799,7 @@
       }
 
       // Count the number of inactive sounds.
-      for (i = 0; i < self._sounds.length; i++) {
-        if (self._sounds[i]._ended) {
-          cnt++;
-        }
-      }
+      var cnt = self._sounds.reduce(function(a, s) { return a + (s._ended ? 1 : 0) }, 0);
 
       // Remove excess inactive sounds, going in reverse order.
       for (i = self._sounds.length - 1; i >= 0; i--) {
@@ -937,7 +930,7 @@
 
       if (parent._webAudio) {
         // Create the gain node for controlling volume (the source will connect to this).
-        self._node = (typeof Howler.ctx.createGain === 'undefined') ? Howler.ctx.createGainNode() : Howler.ctx.createGain();
+        self._node = Howler.ctx.createGain ? Howler.ctx.createGain() : Howler.ctx.createGainNode();
         self._node.gain.setValueAtTime(volume, Howler.ctx.currentTime);
         self._node.connect(Howler.ctx.destination);
       } else {
