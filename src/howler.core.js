@@ -439,8 +439,7 @@
           self._refreshBuffer(sound);
 
           // Setup the playback params.
-          var vol = sound._volume;
-          node.gain.setValueAtTime(vol, Howler.ctx.currentTime);
+          node.gain.setValueAtTime(sound._volume, Howler.ctx.currentTime);
           sound._playStart = Howler.ctx.currentTime;
 
           // Play the sound using the supported method.
