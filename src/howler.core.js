@@ -254,9 +254,7 @@
           self.state = 'running';
 
           // Emit to all Howls that the audio has resumed.
-          for (var i = 0; i < self._howls.length; i++) {
-            self._howls[i]._emit('resume');
-          }
+          self._howls.forEach(h => h._emit('resume'));
         });
 
         if (self._suspendTimer) {
@@ -360,16 +358,11 @@
 
       // Loop through the sources and pick the first one that is compatible.
       for (var i = 0; i < self._src.length; i++) {
-        var ext, str;
-
         // Make sure the source is a string.
-        str = self._src[i];
+        var str = self._src[i];
 
         // Extract the file extension from the URL or base64 data URI.
-        ext = /^data:audio\/([^;,]+);/i.exec(str);
-        if (!ext) {
-          ext = /\.([^.]+)$/.exec(str.split('?', 1)[0]);
-        }
+        var ext = /\.([^.]+)$/.exec(str.split('?', 1)[0]);
 
         if (ext) {
           ext = ext[1].toLowerCase();
@@ -399,7 +392,6 @@
     /**
      * Play a sound or resume previous playback.
      * @param  {String/Number} sprite   **REMOVED** Sprite name for sprite playback or sound id to continue previous.
-     * @param  {Boolean} internal Internal Use: true prevents event firing.
      * @return {Number}          Sound ID.
      */
     play: function() {
@@ -413,7 +405,7 @@
       if (self._state !== 'loaded') {
         self._queue.push({
           event: 'play',
-          action: function() {
+          action() {
             self.play();
           }
         });
@@ -477,9 +469,7 @@
             // Setup the new end timer.
             self._endTimers[sound._id] = setTimeout(self._ended.bind(self, sound), timeout);
 
-            if (!internal) {
-              self._emit('play', sound._id);
-            }
+            self._emit('play', sound._id);
           }, 0);
         };
 
@@ -508,17 +498,16 @@
     /**
      * Stop playback and reset to start.
      * @param  {Number} id The sound ID (empty to stop all in group).
-     * @param  {Boolean} internal Internal Use: true prevents event firing.
      * @return {Howl}
      */
-    stop: function(id, internal) {
+    stop: function(id) {
       var self = this;
 
       // If the sound hasn't loaded, add it to the load queue to stop when capable.
       if (self._state !== 'loaded') {
         self._queue.push({
           event: 'stop',
-          action: function() {
+          action() {
             self.stop(id);
           }
         });
@@ -543,9 +532,7 @@
             if (self._webAudio) {
               // make sure the sound has been created
               if (!sound._node.bufferSource) {
-                if (!internal) {
-                  self._emit('stop', sound._id);
-                }
+                self._emit('stop', sound._id);
 
                 return self;
               }
@@ -565,9 +552,7 @@
           }
         }
 
-        if (sound && !internal) {
-          self._emit('stop', sound._id);
-        }
+        if (sound) self._emit('stop', sound._id);
       }
 
       return self;
@@ -586,7 +571,7 @@
       if (self._state !== 'loaded') {
         self._queue.push({
           event: 'volume',
-          action: function() {
+          action() {
             self.volume.apply(self, [vol]);
           }
         });
@@ -641,7 +626,6 @@
      * @param  {String}   event Event name.
      * @param  {Function} fn    Listener to call.
      * @param  {Number}   id    (optional) Only listen to events for this sound.
-     * @param  {Number}   once  (INTERNAL) Marks event to fire only once.
      * @return {Howl}
      */
     on: function(event, fn, id, once) {
@@ -1010,11 +994,7 @@
 
       // Load the sound into this Howl.
       loadSound(self);
-
-      return;
-    }
-
-    fetch(url, {})
+    } else fetch(url, {})
       .then(res => {
         if (res.ok) res.arrayBuffer().then(ab =>
           Howler.ctx.decodeAudioData(ab, buffer => {
