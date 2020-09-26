@@ -639,66 +639,6 @@
     },
 
     /**
-     * Unload and destroy the current Howl object.
-     * This will immediately stop all sound instances attached to this group.
-     */
-    unload: function() {
-      var self = this;
-
-      // Stop playing any active sounds.
-      var sounds = self._sounds;
-      for (var i = 0; i < sounds.length; i++) {
-        // Stop the sound if it is currently playing.
-        self.stop(sounds[i]._id);
-
-        // Remove the source or disconnect.
-        if (!self._webAudio) {
-          // Set the source to 0-second silence to stop any downloading.
-          sounds[i]._node.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-
-          // Remove any event listeners.
-          sounds[i]._node.removeEventListener('error', sounds[i]._errorFn, false);
-          sounds[i]._node.removeEventListener(Howler._canPlayEvent, sounds[i]._loadFn, false);
-        }
-
-        // Empty out all of the nodes.
-        delete sounds[i]._node;
-
-        // Make sure all timers are cleared out.
-        self._clearTimer(sounds[i]._id);
-
-        // Remove the references in the global Howler object.
-        var index = Howler._howls.indexOf(self);
-        if (index >= 0) {
-          Howler._howls.splice(index, 1);
-        }
-      }
-
-      // Delete this sound from the cache (if no other Howl is using it).
-      var remCache = true;
-      for (i = 0; i < Howler._howls.length; i++) {
-        if (Howler._howls[i]._src === self._src) {
-          remCache = false;
-          break;
-        }
-      }
-
-      if (cache && remCache) {
-        delete cache[self._src];
-      }
-
-      // Clear global errors.
-      Howler.noAudio = false;
-
-      // Clear out `self`.
-      self._state = 'unloaded';
-      self._sounds = [];
-      self = null;
-
-      return null;
-    },
-
-    /**
      * Listen to a custom event.
      * @param  {String}   event Event name.
      * @param  {Function} fn    Listener to call.
