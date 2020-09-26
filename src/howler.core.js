@@ -799,7 +799,7 @@
       }
 
       // Count the number of inactive sounds.
-      var cnt = self._sounds.reduce(function(a, s) { return a + (s._ended ? 1 : 0) }, 0);
+      var cnt = self._sounds.reduce((a, s) => a + (s._ended ? 1 : 0), 0);
 
       // Remove excess inactive sounds, going in reverse order.
       for (i = self._sounds.length - 1; i >= 0; i--) {
@@ -1014,48 +1014,24 @@
       return;
     }
 
-    // Load the buffer from the URL.
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = function() {
-      console.log(url, xhr.status);
-      // Make sure we get a successful response back.
-      var code = (xhr.status + '')[0];
-      if (code !== '0' && code !== '2' && code !== '3') return;
-
-      decodeAudioData(xhr.response, self);
-    };
-    xhr.onerror = function() {
-      // If there is an error, switch to HTML5 Audio.
-      if (self._webAudio) {
+    fetch(url, {})
+      .then(res => {
+        if (res.ok) res.arrayBuffer().then(ab =>
+          Howler.ctx.decodeAudioData(ab, buffer => {
+            if (buffer && self._sounds.length > 0) {
+              cache[self._src] = buffer;
+              loadSound(self, buffer);
+            }
+          })
+        )
+        else Promise.reject()
+      }).catch(() => {
         self._html5 = true;
         self._webAudio = false;
         self._sounds = [];
         delete cache[url];
         self.load();
-      }
-    };
-    try {
-      xhr.send();
-    } catch (e) {
-      xhr.onerror();
-    }
-  };
-
-  /**
-   * Decode audio data from an array buffer.
-   * @param  {ArrayBuffer} arraybuffer The audio data.
-   * @param  {Howl}        self
-   */
-  var decodeAudioData = function(arraybuffer, self) {
-    // Decode the buffer into an audio source.
-    Howler.ctx.decodeAudioData(arraybuffer, function(buffer) {
-      if (buffer && self._sounds.length > 0) {
-        cache[self._src] = buffer;
-        loadSound(self, buffer);
-      }
-    });
+      });
   };
 
   /**
