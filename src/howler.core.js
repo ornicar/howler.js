@@ -36,7 +36,6 @@
       self._canPlayEvent = 'canplaythrough';
 
       // Public properties.
-      self.masterGain = null;
       self.noAudio = false;
       self.usingWebAudio = true;
       self.autoSuspend = true;
@@ -1073,7 +1072,7 @@
         // Create the gain node for controlling volume (the source will connect to this).
         self._node = (typeof Howler.ctx.createGain === 'undefined') ? Howler.ctx.createGainNode() : Howler.ctx.createGain();
         self._node.gain.setValueAtTime(volume, Howler.ctx.currentTime);
-        self._node.connect(Howler.masterGain);
+        self._node.connect(Howler.ctx.destination);
       } else {
         self._node = new Audio();
 
@@ -1272,13 +1271,6 @@
     var version = (/iP(hone|od|ad)/.test(navigator) && navigator.appVersion.match(/OS (\d+)_(\d+)_?(\d+)?/)) ? parseInt(appVersion[1], 10) : null;
     if (version && version < 9 && !/safari/.test(navigator.userAgent.toLowerCase())) {
       Howler.usingWebAudio = false;
-    }
-
-    // Create and expose the master GainNode when using Web Audio (useful for plugins or advanced usage).
-    if (Howler.usingWebAudio) {
-      Howler.masterGain = (typeof Howler.ctx.createGain === 'undefined') ? Howler.ctx.createGainNode() : Howler.ctx.createGain();
-      Howler.masterGain.gain.value = 1;
-      Howler.masterGain.connect(Howler.ctx.destination);
     }
 
     // Re-run the setup on Howler.
