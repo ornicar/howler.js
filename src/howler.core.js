@@ -382,7 +382,7 @@
         }
       }
 
-      if (!url) return; 
+      if (!url) return;
 
       self._src = url;
       self._state = 'loading';
@@ -463,7 +463,7 @@
           playWebAudio();
         } else {
           // Wait for the audio to load and then begin playback.
-          self.once(isRunning ? 'load' : 'resume', playWebAudio, isRunning ? sound._id : null);
+          self.on(isRunning ? 'load' : 'resume', playWebAudio, isRunning ? sound._id : null, 1);
 
           // Cancel the end timer.
           self._clearTimer(sound._id);
@@ -708,73 +708,11 @@
      * @return {Howl}
      */
     on: function(event, fn, id, once) {
-      var self = this;
-      var events = self['_on' + event];
-
-      if (typeof fn === 'function') {
-        events.push(once ? {
-          id: id,
-          fn: fn,
-          once: once
-        } : {
-          id: id,
-          fn: fn
-        });
-      }
-
-      return self;
-    },
-
-    /**
-     * Remove a custom event. Call without parameters to remove all events.
-     * @param  {String}   event Event name.
-     * @param  {Function} fn    Listener to remove. Leave empty to remove all.
-     * @param  {Number}   id    (optional) Only remove events for this sound.
-     * @return {Howl}
-     */
-    off: function(event, fn, id) {
-      var self = this;
-      var events = self['_on' + event];
-      var i = 0;
-
-      if (fn) {
-        // Loop through event store and remove the passed function.
-        for (i = 0; i < events.length; i++) {
-          if (fn === events[i].fn && id === events[i].id) {
-            events.splice(i, 1);
-            break;
-          }
-        }
-      } else if (event) {
-        // Clear out all events of this type.
-        self['_on' + event] = [];
-      } else {
-        // Clear out all events of every type.
-        var keys = Object.keys(self);
-        for (i = 0; i < keys.length; i++) {
-          if ((keys[i].indexOf('_on') === 0) && Array.isArray(self[keys[i]])) {
-            self[keys[i]] = [];
-          }
-        }
-      }
-
-      return self;
-    },
-
-    /**
-     * Listen to a custom event and remove it once fired.
-     * @param  {String}   event Event name.
-     * @param  {Function} fn    Listener to call.
-     * @param  {Number}   id    (optional) Only listen to events for this sound.
-     * @return {Howl}
-     */
-    once: function(event, fn, id) {
-      var self = this;
-
-      // Setup the event listener.
-      self.on(event, fn, id, 1);
-
-      return self;
+      this['_on' + event].push({
+        id: id,
+        fn: fn,
+        once: !!once
+      });
     },
 
     /**
@@ -796,13 +734,9 @@
           }.bind(self, events[i].fn), 0);
 
           // If this event was setup with `once`, remove it.
-          if (events[i].once) {
-            self.off(event, events[i].fn, events[i].id);
-          }
+          if (events[i].once) events.splice(i, 1);
         }
       }
-
-      return self;
     },
 
     /**
@@ -818,10 +752,10 @@
         var task = self._queue[0];
 
         // don't move onto the next task until this one is done
-        self.once(task.event, function() {
+        self.on(task.event, function() {
           self._queue.shift();
           self._loadQueue();
-        });
+        }, null, 1);
 
         task.action();
       }
