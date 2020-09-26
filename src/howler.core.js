@@ -1014,42 +1014,32 @@
       return;
     }
 
-    if (/^data:[^;]+;base64,/.test(url)) {
-      // Decode the base64 data URI without XHR, since some browsers don't support it.
-      var data = atob(url.split(',')[1]);
-      var dataView = new Uint8Array(data.length);
-      for (var i = 0; i < data.length; ++i) {
-        dataView[i] = data.charCodeAt(i);
-      }
+    // Load the buffer from the URL.
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.onload = function() {
+      console.log(url, xhr.status);
+      // Make sure we get a successful response back.
+      var code = (xhr.status + '')[0];
+      if (code !== '0' && code !== '2' && code !== '3') return;
 
-      decodeAudioData(dataView.buffer, self);
-    } else {
-      // Load the buffer from the URL.
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', url, true);
-      xhr.responseType = 'arraybuffer';
-      xhr.onload = function() {
-        // Make sure we get a successful response back.
-        var code = (xhr.status + '')[0];
-        if (code !== '0' && code !== '2' && code !== '3') return;
-
-        decodeAudioData(xhr.response, self);
-      };
-      xhr.onerror = function() {
-        // If there is an error, switch to HTML5 Audio.
-        if (self._webAudio) {
-          self._html5 = true;
-          self._webAudio = false;
-          self._sounds = [];
-          delete cache[url];
-          self.load();
-        }
-      };
-      try {
-        xhr.send();
-      } catch (e) {
-        xhr.onerror();
+      decodeAudioData(xhr.response, self);
+    };
+    xhr.onerror = function() {
+      // If there is an error, switch to HTML5 Audio.
+      if (self._webAudio) {
+        self._html5 = true;
+        self._webAudio = false;
+        self._sounds = [];
+        delete cache[url];
+        self.load();
       }
+    };
+    try {
+      xhr.send();
+    } catch (e) {
+      xhr.onerror();
     }
   };
 
