@@ -22,10 +22,10 @@
     "url": "git://github.com/goldfire/howler.js.git"
   },
   "scripts": {
-    "build": "uglifyjs src/howler.core.js -c -m --screw-ie8 -o dist/howler.core.min.js"
+    "build": "terser src/howler.core.js -c -m --safari10 -o dist/howler.core.min.js"
   },
   "devDependencies": {
-    "uglify-js": "2.x"
+    "terser": "^5.3.2"
   },
   "main": "dist/howler.js",
   "license": "MIT",
