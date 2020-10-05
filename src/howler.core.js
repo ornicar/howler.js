@@ -474,7 +474,7 @@
         };
 
         // Play immediately if ready, or wait for the 'canplaythrough'e vent.
-        var loadedNoReadyState = (self._state === 'loaded' && (window && window.ejecta || !node.readyState && Howler._navigator.isCocoonJS));
+        var loadedNoReadyState = self._state === 'loaded';
         if (node.readyState === 4 || loadedNoReadyState) {
           playHtml5();
         } else {
