@@ -467,7 +467,7 @@
             node.play();
 
             // Setup the new end timer.
-            self._endTimers[sound._id] = setTimeout(self._ended.bind(self, sound), timeout);
+            self._endTimers[sound._id] = setTimeout(self._ended.bind(self, sound), self._duration * 1000);
 
             self._emit('play', sound._id);
           }, 0);
