@@ -155,6 +155,8 @@
       // http://stackoverflow.com/questions/24119684
       self._scratchBuffer = self.ctx.createBuffer(1, 1, 22050);
 
+      const unlockEvents = ['touchstart', 'touchend', 'click'];
+
       // Call this method on touch start to create and play a buffer,
       // then check if the audio actually played to determine if
       // audio has now been unlocked on iOS, Android, etc.
@@ -180,16 +182,12 @@
           self.mobileAutoEnable = false;
 
           // Remove the touch start listener.
-          document.removeEventListener('touchstart', unlock, true);
-          document.removeEventListener('touchend', unlock, true);
-          document.removeEventListener('click', unlock, true);
+          unlockEvents.forEach(e => document.removeEventListener(e, unlock, true));
         };
       };
 
       // Setup a touch start listener to attempt an unlock in.
-      document.addEventListener('touchstart', unlock, true);
-      document.addEventListener('touchend', unlock, true);
-      document.addEventListener('click', unlock, true);
+      unlockEvents.forEach(e => document.addEventListener(e, unlock, true));
 
       return self;
     },
